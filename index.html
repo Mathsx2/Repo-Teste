@@ -116,6 +116,28 @@
   }
   .reset-btn:hover{border-color:var(--tab-color);color:var(--text);}
 
+  .biset-card{
+    position:relative;
+    border:1.5px dashed var(--tab-color, var(--border));
+    border-radius:14px;
+    padding:10px 10px 4px;
+    margin-bottom:8px;
+  }
+  .biset-card .ex{margin-bottom:6px;border-style:solid;}
+  .biset-card .ex:last-child{margin-bottom:0;}
+  .biset-label{
+    display:inline-block;
+    font-size:9.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    font-weight:700;
+    color:var(--tab-color, var(--muted));
+    background:var(--bg);
+    padding:0 6px;
+    position:absolute;
+    top:-8px;
+    left:10px;
+  }
   .group{margin-bottom:16px;}
   .group-title{
     font-size:10.5px;
@@ -278,8 +300,10 @@ const DATA = {
         { n: "Leg Press 45", s: "5x", r: "10 RP", tag: "intervalo 10s" },
       ]},
       { title: "Panturrilha", exs: [
-        { n: "Banco Solêo", s: "4x", r: "15" },
-        { n: "Panturrilha em Pé", s: "4x", r: "15" },
+        { biset: [
+          { n: "Banco Solêo", s: "4x", r: "15" },
+          { n: "Panturrilha em Pé", s: "4x", r: "15" },
+        ]},
       ]},
     ]
   },
@@ -292,8 +316,10 @@ const DATA = {
         { n: "Remada Sentado + unilateral", s: "3x", r: "5+5+10" },
       ]},
       { title: "Bíceps / Antebraço", exs: [
-        { n: "Rosca Martelo (corda)", s: "4x", r: "12" },
-        { n: "Rotação de Punho", s: "4x", r: "12" },
+        { biset: [
+          { n: "Rosca Martelo (corda)", s: "4x", r: "12" },
+          { n: "Rotação de Punho", s: "4x", r: "12" },
+        ]},
         { n: "Rosca Direta", s: "4x", r: "10", tag: "isometria" },
       ]},
       { title: "Abdômen", exs: [
@@ -340,7 +366,10 @@ let currentLetter = suggested || "A";
 
 function allExercises(letter){
   const list = [];
-  DATA[letter].groups.forEach(g => g.exs.forEach(e => list.push(e.n)));
+  DATA[letter].groups.forEach(g => g.exs.forEach(e => {
+    if(e.biset) e.biset.forEach(sub => list.push(sub.n));
+    else list.push(e.n);
+  }));
   return list;
 }
 
@@ -395,6 +424,30 @@ function renderProgress(){
   document.getElementById("progressCount").textContent = `${done} de ${total} concluídos`;
 }
 
+function buildExRow(ex){
+  const done = isDone(currentLetter, ex.n);
+  const row = document.createElement("div");
+  row.className = "ex" + (done ? " done" : "");
+  row.style.setProperty("--tab-color", `var(--${currentLetter.toLowerCase()})`);
+  row.innerHTML = `
+    <div class="checkbox">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#101214" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="ex-name">
+      <div class="n ${done ? 'done-text' : ''}">${ex.n}</div>
+      <div class="ex-meta">
+        <span class="pill">${ex.s} ${ex.r}</span>
+        ${ex.tag ? `<span class="pill">${ex.tag}</span>` : ''}
+      </div>
+    </div>
+  `;
+  row.addEventListener("click", () => {
+    toggleDone(currentLetter, ex.n);
+    renderAll();
+  });
+  return row;
+}
+
 function renderExercises(){
   const wrap = document.getElementById("exerciseList");
   wrap.innerHTML = "";
@@ -403,27 +456,18 @@ function renderExercises(){
     g.className = "group";
     g.innerHTML = `<p class="group-title">${group.title}</p>`;
     group.exs.forEach(ex => {
-      const done = isDone(currentLetter, ex.n);
-      const row = document.createElement("div");
-      row.className = "ex" + (done ? " done" : "");
-      row.style.setProperty("--tab-color", `var(--${currentLetter.toLowerCase()})`);
-      row.innerHTML = `
-        <div class="checkbox">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#101214" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <div class="ex-name">
-          <div class="n ${done ? 'done-text' : ''}">${ex.n}</div>
-          <div class="ex-meta">
-            <span class="pill">${ex.s} ${ex.r}</span>
-            ${ex.tag ? `<span class="pill">${ex.tag}</span>` : ''}
-          </div>
-        </div>
-      `;
-      row.addEventListener("click", () => {
-        toggleDone(currentLetter, ex.n);
-        renderAll();
-      });
-      g.appendChild(row);
+      if(ex.biset){
+        const card = document.createElement("div");
+        card.className = "biset-card";
+        card.style.setProperty("--tab-color", `var(--${currentLetter.toLowerCase()})`);
+        card.innerHTML = `<span class="biset-label">Bi-set</span>`;
+        ex.biset.forEach(sub => {
+          card.appendChild(buildExRow(sub));
+        });
+        g.appendChild(card);
+        return;
+      }
+      g.appendChild(buildExRow(ex));
     });
     wrap.appendChild(g);
   });
